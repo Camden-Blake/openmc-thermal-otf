@@ -13,6 +13,9 @@
 #include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/vector.h"
+#include <hdf5/serial/H5Ipublic.h>
+
+typedef std::vector<double>(*FuncPointer)(const double &, const int &);
 
 namespace openmc {
 
@@ -111,6 +114,8 @@ public:
   // Sample an outgoing energy and angle
   void sample_otf(double sqrtkT, double E_in, double* E_out, double* mu, uint64_t* seed);
 
+//   void set_fit_func__(FuncPointer& fitting_function, const std::string& fit_func_str);
+
   bool is_otf_ = false;//!< is the file an otf file
 
   private:
@@ -140,22 +145,43 @@ public:
   double otf_inelastic_alpha_max_scale;
   double otf_inelastic_alpha_min_scale;
   std::string otf_inelastic_alpha_fitting_function_str;
+  FuncPointer otf_inelastic_alpha_fitting_function;
   std::vector<double> otf_inelastic_alpha_coeffs;
+  int num_alpha_coeffs;
   std::vector<double> otf_inelastic_alpha_cdf_grid;
   std::vector<double> otf_inelastic_alpha_beta_grid;
 
   double otf_inelastic_beta_max_scale;
   double otf_inelastic_beta_min_scale;
   std::string otf_inelastic_beta_fitting_function_str;
+  FuncPointer otf_inelastic_beta_fitting_function;
   std::vector<double> otf_inelastic_beta_coeffs;
+  int num_beta_coeffs;
   std::vector<double> otf_inelastic_beta_cdf_grid;
   std::vector<double> otf_inelastic_beta_energy_grid;
 
   double otf_inelastic_xs_max_scale;
   double otf_inelastic_xs_min_scale;
   std::string otf_inelastic_xs_fitting_function_str;
+  FuncPointer otf_inelastic_xs_fitting_function;
   std::vector<double> otf_inelastic_xs_coeffs;
+  int num_xs_coeffs;
   std::vector<double> otf_inelastic_xs_energy_grid;
+
+  double calculate_elastic_coherent_xs(double E, double temperature) const;
+  double calculate_elastic_incoherent_xs(double E, double temperature) const;
+  double calculate_inelastic_xs(double E, double temperature) const;
+
+  void sample_otf_elastic_coherent(double temperature, double E_in, double* E_out, double* mu, uint64_t* seed) const;
+  void sample_otf_elastic_incoherent(double temperature, double E_in, double* E_out, double* mu, uint64_t* seed) const;
+  void sample_otf_inelastic(double temperature, double E_in, double* E_out, double* mu, uint64_t* seed) const;
+
+  double sample_beta__(const double &temp, const double &inc_ener, const double &xi) const;
+  double calculate_secondary_energy__(const double &temp, const double &inc_ener, const double &beta) const;
+  std::pair<double, double> return_alpha_extrema__(const double & temp, const double &inc_ener, const double &beta) const;
+  double sample_alpha__(const double &temp, const double &inc_ener, const double &beta, const double &xi) const;
+  double sample_bounding_alpha__(const double &temp, const int &beta_ind, const std::pair<double, double> &alpha_extrema, const double &xi, const std::vector<double> &evaled_basis_points) const;
+  double calculate_scattering_cosine__(const double &temp, const double &inc_ener, const double &sec_ener, const double &alpha) const;
 };
 
 void free_memory_thermal();

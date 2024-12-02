@@ -803,6 +803,9 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
     double E_out;
     data::thermal_scatt[i_sab]->sample_otf(p.sqrtkT(), p.E(), &E_out, &p.mu(), p.current_seed());
     // Set energy to outgoing, change direction of particle
+    // std::cout << "Incoming Neutron Energy: " << p.E() << std::endl;
+    // std::cout << "Outgoing Neutron Energy: " << E_out << std::endl;
+    // std::cout << "Scattering Angle: " << p.mu() << std::endl;
     p.E() = E_out;
     p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
   }
