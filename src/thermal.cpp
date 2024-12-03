@@ -909,65 +909,41 @@ std::pair<double, double> ThermalScattering::return_alpha_extrema__(const double
 
 double ThermalScattering::sample_alpha__(const double &temp, const double &inc_ener, const double &beta, const double &xi) const
 {
-    // std::cout << "Entering sample_alpha__ with temp: " << temp 
-            //   << ", inc_ener: " << inc_ener 
-            //   << ", beta: " << beta 
-            //   << ", xi: " << xi << std::endl;
-
     double eval_point = scale_value(temp, otf_inelastic_min_t, otf_inelastic_max_t, otf_inelastic_alpha_min_scale, otf_inelastic_alpha_max_scale);
-    // std::cout << "Calculated eval_point: " << eval_point << std::endl;
 
     std::vector<double> evaled_alpha_points = otf_inelastic_alpha_fitting_function(eval_point, num_alpha_coeffs - 1);
-    // std::cout << "Evaluated alpha points: ";
-    // for (const auto &point : evaled_alpha_points) std::cout << point << " ";
-    // std::cout << std::endl;
 
     std::pair<double, double> alpha_extrema = return_alpha_extrema__(temp, inc_ener, beta);
-    // std::cout << "Alpha extrema: [" << alpha_extrema.first << ", " << alpha_extrema.second << "]" << std::endl;
 
     double grid_beta = std::abs(beta * temp / ref_temp_k);
-    // std::cout << "Grid beta: " << grid_beta << std::endl;
 
     auto [lo_beta_ind, hi_beta_ind] = findSampleInterpolationIndices(otf_inelastic_alpha_beta_grid.begin(), otf_inelastic_alpha_beta_grid.end() - 1, grid_beta);
-    // std::cout << "Beta indices: lo=" << lo_beta_ind << ", hi=" << hi_beta_ind << std::endl;
 
     double l_alpha = sample_bounding_alpha__(temp, lo_beta_ind, alpha_extrema, xi, evaled_alpha_points);
     double u_alpha = sample_bounding_alpha__(temp, hi_beta_ind, alpha_extrema, xi, evaled_alpha_points);
-    // std::cout << "Sampled bounding alphas: l_alpha=" << l_alpha << ", u_alpha=" << u_alpha << std::endl;
 
-    // std::cout << "x1 : " << otf_inelastic_alpha_beta_grid[lo_beta_ind] << std::endl;
-    // std::cout << "x2 : " << otf_inelastic_alpha_beta_grid[hi_beta_ind] << std::endl;
-    double alpha = ENDF_interp(otf_inelastic_alpha_beta_grid[lo_beta_ind],
-                               otf_inelastic_alpha_beta_grid[hi_beta_ind],
-                               l_alpha, 
-                               u_alpha, 
-                               grid_beta, 
-                               2);
-    // std::cout << "Interpolated alpha: " << alpha << std::endl;
-    return alpha;
+    return ENDF_interp(otf_inelastic_alpha_beta_grid[lo_beta_ind],
+                       otf_inelastic_alpha_beta_grid[hi_beta_ind],
+                       l_alpha, 
+                       u_alpha, 
+                       grid_beta, 
+                       2);
 }
 
 double ThermalScattering::sample_bounding_alpha__(const double &temp, const int &beta_ind, const std::pair<double, double> &alpha_extrema, const double &xi, const std::vector<double> &evaled_basis_points) const
 {
-    // std::cout << "Entering sample_bounding_alpha__ with temp: " << temp 
-            //   << ", beta_ind: " << beta_ind 
-            //   << ", xi: " << xi << std::endl;
-
     std::vector<double>::const_iterator alpha_start = otf_inelastic_alpha_coeffs.begin() + beta_ind * otf_inelastic_alpha_cdf_grid.size() * num_alpha_coeffs;
     std::vector<double>::const_iterator alpha_end = alpha_start + otf_inelastic_alpha_cdf_grid.size() * num_alpha_coeffs;
 
     auto [l_amin_ind, u_amin_ind] = findSampleCoeffInterpolationIndices(alpha_start, alpha_end - num_alpha_coeffs, alpha_extrema.first, evaled_basis_points);
-    // std::cout << "Alpha min indices: l=" << l_amin_ind << ", u=" << u_amin_ind << std::endl;
 
     std::vector<double>::const_iterator x1_i = otf_inelastic_alpha_coeffs.begin() + num_alpha_coeffs * (beta_ind * otf_inelastic_alpha_cdf_grid.size() + l_amin_ind);
     std::vector<double>::const_iterator x2_i = otf_inelastic_alpha_coeffs.begin() + num_alpha_coeffs * (beta_ind * otf_inelastic_alpha_cdf_grid.size() + u_amin_ind);
 
     double x1 = std::inner_product(x1_i, x1_i + num_alpha_coeffs, evaled_basis_points.begin(), 0.0);
     double x2 = std::inner_product(x2_i, x2_i + num_alpha_coeffs, evaled_basis_points.begin(), 0.0);
-    // std::cout << "X1: " << x1 << ", X2: " << x2 << std::endl;
 
     double u_amin_cdf = ENDF_interp(x1, x2, otf_inelastic_alpha_cdf_grid[l_amin_ind], otf_inelastic_alpha_cdf_grid[u_amin_ind], alpha_extrema.first, 2);
-    // std::cout << "u_amin_cdf: " << u_amin_cdf << std::endl;
 
     auto [l_amax_ind, u_amax_ind] = findSampleCoeffInterpolationIndices(alpha_start, alpha_end - num_alpha_coeffs, alpha_extrema.second, evaled_basis_points);
     x1_i = otf_inelastic_alpha_coeffs.begin() + num_alpha_coeffs * (beta_ind * otf_inelastic_alpha_cdf_grid.size() + l_amax_ind);
@@ -975,13 +951,10 @@ double ThermalScattering::sample_bounding_alpha__(const double &temp, const int 
 
     x1 = std::inner_product(x1_i, x1_i + num_alpha_coeffs, evaled_basis_points.begin(), 0.0);
     x2 = std::inner_product(x2_i, x2_i + num_alpha_coeffs, evaled_basis_points.begin(), 0.0);
-    // std::cout << "X1: " << x1 << ", X2: " << x2 << std::endl;
 
     double u_amax_cdf = ENDF_interp(x1, x2, otf_inelastic_alpha_cdf_grid[l_amax_ind], otf_inelastic_alpha_cdf_grid[u_amax_ind], alpha_extrema.second, 2);
-    // std::cout << "u_amax_cdf: " << u_amax_cdf << std::endl;
 
     double xi_prime = scale_value(xi, 0, 1, u_amin_cdf, u_amax_cdf);
-    // std::cout << "Scaled xi_prime: " << xi_prime << std::endl;
 
     auto [l_alpha_cdf_ind, u_alpha_cdf_ind] = findSampleInterpolationIndices(otf_inelastic_alpha_cdf_grid.begin(), otf_inelastic_alpha_cdf_grid.end(), xi_prime);
     x1_i = otf_inelastic_alpha_coeffs.begin() + num_alpha_coeffs * (beta_ind * otf_inelastic_alpha_cdf_grid.size() + l_alpha_cdf_ind);
@@ -989,23 +962,13 @@ double ThermalScattering::sample_bounding_alpha__(const double &temp, const int 
 
     x1 = std::inner_product(x1_i, x1_i + num_alpha_coeffs, evaled_basis_points.begin(), 0.0);
     x2 = std::inner_product(x2_i, x2_i + num_alpha_coeffs, evaled_basis_points.begin(), 0.0);
-    // std::cout << "X1: " << x1 << ", X2: " << x2 << std::endl;
 
-    double alpha = ENDF_interp(otf_inelastic_alpha_cdf_grid[l_alpha_cdf_ind], otf_inelastic_alpha_cdf_grid[u_alpha_cdf_ind], x1, x2, xi_prime, 2);
-    // std::cout << "Interpolated alpha: " << alpha << std::endl;
-    return alpha;
+    return ENDF_interp(otf_inelastic_alpha_cdf_grid[l_alpha_cdf_ind], otf_inelastic_alpha_cdf_grid[u_alpha_cdf_ind], x1, x2, xi_prime, 2);
 }
 
 double ThermalScattering::calculate_scattering_cosine__(const double &temp, const double &inc_ener, const double &sec_ener, const double &alpha) const
 {
-    // std::cout << "Entering calculate_scattering_cosine__ with temp: " << temp 
-            //   << ", inc_ener: " << inc_ener 
-            //   << ", sec_ener: " << sec_ener 
-            //   << ", alpha: " << alpha << std::endl;
-
-    double result = ((inc_ener + sec_ener) - alpha * otf_inelastic_A0 * boltz * temp) / (2 * sqrt(inc_ener * sec_ener));
-    // std::cout << "Calculated scattering cosine: " << result << std::endl;
-    return result;
+    return ((inc_ener + sec_ener) - alpha * otf_inelastic_A0 * boltz * temp) / (2 * sqrt(inc_ener * sec_ener));
 }
 
 //==============================================================================
