@@ -752,7 +752,7 @@ double ThermalScattering::calculate_elastic_incoherent_xs(double E, double tempe
 double ThermalScattering::calculate_inelastic_xs(double E, double temperature) const{
     double eval_point = scale_value(temperature, otf_inelastic_min_t, otf_inelastic_max_t, otf_inelastic_xs_min_scale, otf_inelastic_xs_max_scale);
         int num_coeffs = otf_inelastic_xs_coeffs.size()/otf_inelastic_xs_energy_grid.size();
-        std::vector<double> basis_points = otf_inelastic_xs_fitting_function(eval_point, num_coeffs);
+        std::vector<double> basis_points = otf_inelastic_xs_fitting_function(eval_point, num_coeffs - 1);
         InterpolationIndices e_b = findSampleInterpolationIndices(otf_inelastic_xs_energy_grid.begin(),
                                                                   otf_inelastic_xs_energy_grid.end() - 1,
                                                                   E);
