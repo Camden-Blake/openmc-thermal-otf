@@ -956,7 +956,7 @@ double ThermalScattering::sample_bounding_alpha__(const double &temp, const int 
 
     double xi_prime = scale_value(xi, 0, 1, u_amin_cdf, u_amax_cdf);
 
-    auto [l_alpha_cdf_ind, u_alpha_cdf_ind] = findSampleInterpolationIndices(otf_inelastic_alpha_cdf_grid.begin(), otf_inelastic_alpha_cdf_grid.end(), xi_prime);
+    auto [l_alpha_cdf_ind, u_alpha_cdf_ind] = findSampleInterpolationIndices(otf_inelastic_alpha_cdf_grid.begin(), otf_inelastic_alpha_cdf_grid.end() - 1, xi_prime);
     x1_i = otf_inelastic_alpha_coeffs.begin() + num_alpha_coeffs * (beta_ind * otf_inelastic_alpha_cdf_grid.size() + l_alpha_cdf_ind);
     x2_i = otf_inelastic_alpha_coeffs.begin() + num_alpha_coeffs * (beta_ind * otf_inelastic_alpha_cdf_grid.size() + u_alpha_cdf_ind);
 
