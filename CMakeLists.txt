@@ -428,6 +428,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp
   src/tallies/trigger.cpp
+  src/thermal_otf.cpp
   src/thermal.cpp
   src/timer.cpp
   src/track_output.cpp

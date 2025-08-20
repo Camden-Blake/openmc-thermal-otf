@@ -846,13 +846,15 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
   // Calculate the S(a,b) cross section
   int i_temp;
   double elastic;
+  double elastic_coherent;
   double inelastic;
   data::thermal_scatt[i_sab]->calculate_xs(
-    p.E(), p.sqrtkT(), &i_temp, &elastic, &inelastic, p.current_seed());
+    p.E(), p.sqrtkT(), &i_temp, &elastic, &elastic_coherent, &inelastic, p.current_seed());
 
   // Store the S(a,b) cross sections.
   micro.thermal = sab_frac * (elastic + inelastic);
   micro.thermal_elastic = sab_frac * elastic;
+  micro.thermal_elastic_coherent = sab_frac * elastic_coherent;
 
   // Calculate free atom elastic cross section
   this->calculate_elastic_xs(p);

@@ -798,31 +798,16 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
 
 void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 {
-  if (data::thermal_scatt[i_sab]->is_otf_){
-    // Sample energy and angle
-    double E_out;
-    data::thermal_scatt[i_sab]->sample_otf(p.sqrtkT(), p.E(), &E_out, &p.mu(), p.current_seed());
-    // Set energy to outgoing, change direction of particle
-    // std::cout << "Incoming Neutron Energy: " << p.E() << std::endl;
-    // std::cout << "Outgoing Neutron Energy: " << E_out << std::endl;
-    // std::cout << "Scattering Angle: " << p.mu() << std::endl;
-    p.E() = E_out;
-    p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
-  }
-  else{
     // Determine temperature index
     const auto& micro {p.neutron_xs(i_nuclide)};
-    int i_temp = micro.index_temp_sab;
 
     // Sample energy and angle
     double E_out;
-    data::thermal_scatt[i_sab]->data_[i_temp].sample(
-      micro, p.E(), &E_out, &p.mu(), p.current_seed());
+    data::thermal_scatt[i_sab]->sample(micro, p.sqrtkT(), p.E(), E_out, p.mu(), p.current_seed());
 
     // Set energy to outgoing, change direction of particle
     p.E() = E_out;
     p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
-  }
 }
 
 Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
