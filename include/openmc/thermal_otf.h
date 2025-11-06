@@ -121,7 +121,7 @@ class ThermalScatteringOTF {
 
         double rescale_alpha_random_number(const int& beta_ind, const Alpha_Extrema& alpha_extrema, const std::vector<double>& evaled_basis_points, const double& random);
 
-        double reverse_search_alpha_cdf(const int& beta_ind, const vec_iter& alpha_start, const vec_iter& alpha_end, const double& alpha_search, const std::vector<double> evaled_basis_points);
+        double reverse_search_alpha_cdf(const int& beta_ind, const vec_iter& alpha_start, const vec_iter& alpha_end, const double& alpha_search, const std::vector<double>& evaled_basis_points);
 
         Alpha_Extrema calculate_alpha_extrema(const double& inc_energy, const double& temperature, const double& beta);
 

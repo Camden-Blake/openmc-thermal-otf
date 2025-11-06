@@ -252,19 +252,40 @@ double bi_interp(double const & x1, double const & x2, double const & y1, double
     return ENDF_interp(y1, y2, fxy1, fxy2, y, y_scheme);
 }
 
+/** 
+ * @brief Calculates the inner product (dot product) of two vectors. 
+ * * This function is optimized for contiguous memory and gives a strong hint 
+ * to the compiler to use SIMD instructions. 
+ * @param iter1 Const iterator to the beginning of the first vector. 
+ * @param iter2 Const iterator to the beginning of the second vector. 
+ * @param length The number of elements to process. 
+ * @return The scalar dot product (double). 
+ */ 
+inline double inner_product(const std::vector<double>::const_iterator &iter1, 
+                     const std::vector<double>::const_iterator &iter2, 
+                     const size_t length) { 
+    double sum = 0.0; 
+    #pragma omp simd reduction(+:sum) 
+    for (size_t i = 0; i < length; ++i) { 
+        sum += iter1[i] * iter2[i]; 
+    } 
+    return sum; 
+}
+
 typedef std::pair<size_t, size_t> InterpolationIndices;
+typedef std::vector<double>::const_iterator Iter;
 
 /**
  * @brief Finds the indices of list of elements that would bracket the search value val
- * @tparam Iter Constant iterator
  * @param begin Iterator pointing to the first element of the search range
  * @param end Iterator pointing to the last element of the search range
  * If you use x.end(), you need to subtract one from the iterator
  * @param val Double of the value that is desired to be found
  * @return InterpolationIndicies type (std::pair(size_t, size_t))
  */
-template <typename Iter>
-InterpolationIndices findSampleInterpolationIndices(const Iter &begin, const Iter &end, const double &val) 
+InterpolationIndices findSampleInterpolationIndices(const Iter &begin, 
+                                                    const Iter &end, 
+                                                    const double &val) 
 {
     Iter lo = begin + 1; // +1 handles if below grid
     Iter hi = end;
@@ -288,7 +309,6 @@ InterpolationIndices findSampleInterpolationIndices(const Iter &begin, const Ite
 
 /**
  * @brief Finds the indices of list of elements that would bracket the search value val when linear interpolation is applied between the two list
- * @tparam Iter Constant iterator
  * @param begin1 Iterator pointing to the first element of the search range for the lower list
  * @param begin2 Iterator pointing to the first element of the search range for the upper list
  * @param end Iterator pointing to the last element of the search range
@@ -297,8 +317,14 @@ InterpolationIndices findSampleInterpolationIndices(const Iter &begin, const Ite
  * @param scheme Interpolation scheme
  * @return InterpolationIndicies type (std::pair(size_t, size_t))
  */
-template <typename Iter>
-InterpolationIndices findSampleInterpolationIndices(const Iter &begin1, const Iter &begin2, const Iter &end, const double& x1, const double& x2, const double& x, const double &val, const int scheme) 
+InterpolationIndices findSampleInterpolationIndices(const Iter &begin1, 
+                                                    const Iter &begin2, 
+                                                    const Iter &end, 
+                                                    const double& x1, 
+                                                    const double& x2, 
+                                                    const double& x, 
+                                                    const double &val, 
+                                                    const int scheme) 
 {
     Iter lo = begin1 + 1; // +1 handles if below grid
     Iter hi = end;
@@ -325,7 +351,6 @@ InterpolationIndices findSampleInterpolationIndices(const Iter &begin1, const It
 /**
  * @brief Finds the indices of list of coefficients that would bracket the search value val.
  * This method uses std::inner_product to evaluate the coefficients.
- * @tparam Iter Constant iterator
  * @param begin Iterator pointing to the first coefficient in the first set of coefficients of the search range
  * @param end Iterator pointing to the first coefficient in the last set of coefficients of the search range
  * See test_sample_search.cpp to see how to set begin and end properly
@@ -334,7 +359,6 @@ InterpolationIndices findSampleInterpolationIndices(const Iter &begin1, const It
  * This should be the returned vector from an Evaluation Function
  * @return InterpolationIndicies type (std::pair(size_t, size_t))
  */
-template <typename Iter>
 InterpolationIndices findSampleCoeffInterpolationIndices(const Iter &begin, 
                                                          const Iter &end, 
                                                          const double &val, 
@@ -349,6 +373,7 @@ InterpolationIndices findSampleCoeffInterpolationIndices(const Iter &begin,
         Iter mid = lo;
         std::advance(mid, half * num_coeffs);
         double func_val = std::inner_product(mid, mid + num_coeffs, evaled_basis_points.begin(), 0.0);
+        // double func_val = inner_product(mid, evaled_basis_points.begin(), num_coeffs);
         if (func_val < val) {
             lo = mid;
             lo += num_coeffs;
@@ -630,6 +655,10 @@ double ThermalScatteringOTF::sample_beta(const double& inc_energy, const double&
         std::inner_product(f12_i, f12_i+beta_data.num_coeffs, evaled_basis_points.begin(), 0.0), //f12
         std::inner_product(f21_i, f21_i+beta_data.num_coeffs, evaled_basis_points.begin(), 0.0), //f21
         std::inner_product(f22_i, f22_i+beta_data.num_coeffs, evaled_basis_points.begin(), 0.0), //f22
+        // inner_product(f11_i, evaled_basis_points.begin(), beta_data.num_coeffs), //f11
+        // inner_product(f12_i, evaled_basis_points.begin(), beta_data.num_coeffs), //f12
+        // inner_product(f21_i, evaled_basis_points.begin(), beta_data.num_coeffs), //f21
+        // inner_product(f22_i, evaled_basis_points.begin(), beta_data.num_coeffs), //f22
         inc_energy, //x
         random,     //y
         2, //x-interp scheme
@@ -666,6 +695,8 @@ double ThermalScatteringOTF::sample_bounding_alpha(const int& beta_ind, const Al
     vec_iter a_u_iter = alpha_data.coeffs.begin() + alpha_data.num_coeffs*(beta_ind*alpha_data.y.size()+c_b.second);
     double alpha_l = std::inner_product(a_l_iter, a_l_iter+alpha_data.num_coeffs, evaled_basis_points.begin(), 0.0);
     double alpha_u = std::inner_product(a_u_iter, a_u_iter+alpha_data.num_coeffs, evaled_basis_points.begin(), 0.0);
+    // double alpha_l = inner_product(a_l_iter, evaled_basis_points.begin(), alpha_data.num_coeffs);
+    // double alpha_u = inner_product(a_u_iter, evaled_basis_points.begin(), alpha_data.num_coeffs);
     double alpha = ENDF_interp(alpha_data.y[c_b.first], alpha_data.y[c_b.second], alpha_l, alpha_u, random_prime, 2);
     return alpha;
 }
@@ -680,13 +711,15 @@ double ThermalScatteringOTF::rescale_alpha_random_number(const int& beta_ind, co
     return random_prime;
 }
 
-double ThermalScatteringOTF::reverse_search_alpha_cdf(const int& beta_ind, const vec_iter& alpha_start, const vec_iter& alpha_end, const double& alpha_search, const std::vector<double> evaled_basis_points){
+double ThermalScatteringOTF::reverse_search_alpha_cdf(const int& beta_ind, const vec_iter& alpha_start, const vec_iter& alpha_end, const double& alpha_search, const std::vector<double>& evaled_basis_points){
     const Inelastic_Fit_2D& alpha_data = data.inelastic.value().alpha;
     InterpolationIndices a_b = findSampleCoeffInterpolationIndices(alpha_start, alpha_end, alpha_search, evaled_basis_points);
     vec_iter a_l_iter = alpha_data.coeffs.begin() + alpha_data.num_coeffs*(beta_ind*alpha_data.y.size() + a_b.first);
     vec_iter a_u_iter = alpha_data.coeffs.begin() + alpha_data.num_coeffs*(beta_ind*alpha_data.y.size() + a_b.second);
     double a_l = std::inner_product(a_l_iter, a_l_iter + alpha_data.num_coeffs, evaled_basis_points.begin(), 0.0);
     double a_u = std::inner_product(a_u_iter, a_u_iter + alpha_data.num_coeffs, evaled_basis_points.begin(), 0.0);
+    // double a_l = inner_product(a_l_iter, evaled_basis_points.begin(), alpha_data.num_coeffs);
+    // double a_u = inner_product(a_u_iter, evaled_basis_points.begin(), alpha_data.num_coeffs);
     double cdf = ENDF_interp(a_l, a_u, alpha_data.y[a_b.first], alpha_data.y[a_b.second], alpha_search, 2);
     return cdf;
 }
